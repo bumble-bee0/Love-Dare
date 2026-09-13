@@ -1,0 +1,90 @@
+name: Build APK from Zip
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '*.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Siapkan folder www
+        run: |
+          rm -rf www
+          mkdir www
+          shopt -s nullglob
+          for f in *.zip; do
+            echo "Mengekstrak $f ..."
+            unzip -o "$f" -d www
+            rm "$f"
+          done
+          if [ ! -f www/index.html ]; then
+            echo "Zip tidak ditemukan, pakai file yang sudah ada di root"
+            cp index.html manifest.json service-worker.js icon-192.png icon-512.png apple-touch-icon.png www/ 2>/dev/null || true
+          fi
+          echo "Isi folder www:"
+          ls -la www
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Buat project Capacitor
+        run: |
+          rm -rf android node_modules package.json package-lock.json capacitor.config.json capacitor.config.ts
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/device
+          npx cap init "LoveDare Ular Tangga" "com.lovedare.ulartangga" --web-dir=www
+          npx cap add android
+
+      - name: Fix konflik duplicate Kotlin stdlib
+        run: |
+          cat >> android/app/build.gradle << 'EOF'
+
+          configurations.all {
+              exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+              exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+          }
+          EOF
+
+      - name: Sync file web + plugin ke project Android
+        run: npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK sebagai artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lovedare-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Buat Release dengan APK (link download permanen)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "LoveDare APK (Auto-build)"
+          make_latest: true
+          files: android/app/build/outputs/apk/debug/app-debug.apk
