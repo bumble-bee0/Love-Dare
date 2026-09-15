@@ -1,0 +1,8 @@
+name = "lovedare-api"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lovedare-db"
+database_id = "89929a83-fd65-49a0-83f6-99442abd4af3"
