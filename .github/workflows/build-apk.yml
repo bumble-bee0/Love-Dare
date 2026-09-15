@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - '*.zip'
+      - '!admin-app.zip'
   workflow_dispatch:
 
 permissions:
@@ -23,9 +24,11 @@ jobs:
           mkdir www
           shopt -s nullglob
           for f in *.zip; do
-            echo "Mengekstrak $f ..."
-            unzip -o "$f" -d www
-            rm "$f"
+            if [ "$f" != "admin-app.zip" ]; then
+              echo "Mengekstrak $f ..."
+              unzip -o "$f" -d www
+              rm "$f"
+            fi
           done
           if [ ! -f www/index.html ]; then
             echo "Zip tidak ditemukan, pakai file yang sudah ada di root"
@@ -47,6 +50,15 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: Terima semua lisensi Android SDK (termasuk Preview)
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME" -name "sdkmanager" 2>/dev/null | head -n 1)
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(find "$ANDROID_SDK_ROOT" -name "sdkmanager" 2>/dev/null | head -n 1)
+          fi
+          echo "Pakai sdkmanager di: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses || true
 
       - name: Buat project Capacitor
         run: |
