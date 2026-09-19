@@ -92,6 +92,21 @@ jobs:
             echo "Lewati: tidak ada assets/icon-only.png"
           fi
 
+      - name: Warna latar window (hilangkan blank hitam saat buka)
+        run: |
+          python3 - << 'PY'
+          import re, pathlib
+          p = pathlib.Path('android/app/src/main/res/values/styles.xml')
+          s = p.read_text()
+          warna = '#671929'
+          def patch(m):
+              blok = re.sub(r'\s*<item name="android:(background|windowBackground)">[^<]*</item>', '', m.group(0))
+              return blok.replace('</style>', '    <item name="android:background">%s</item>\n        <item name="android:windowBackground">%s</item>\n    </style>' % (warna, warna))
+          s2 = re.sub(r'<style name="AppTheme\.NoActionBar"[^>]*>.*?</style>', patch, s, flags=re.S)
+          p.write_text(s2)
+          print(s2)
+          PY
+
       - name: Fix konflik duplicate Kotlin stdlib
         run: |
           cat >> android/app/build.gradle << 'EOF'
