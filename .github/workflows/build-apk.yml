@@ -84,6 +84,35 @@ jobs:
           EOF2
           npx cap add android
 
+      - name: Cegah screenshot & screen recording di dalam aplikasi
+        run: |
+          MAIN_ACTIVITY="android/app/src/main/java/com/lovedare/ulartangga/MainActivity.java"
+          if [ -f "$MAIN_ACTIVITY" ]; then
+            cat > "$MAIN_ACTIVITY" << 'EOF'
+          package com.lovedare.ulartangga;
+
+          import android.os.Bundle;
+          import android.view.WindowManager;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  // Blokir screenshot & screen recording, dan sembunyikan pratinjau
+                  // aplikasi ini di daftar "recent apps".
+                  getWindow().setFlags(
+                      WindowManager.LayoutParams.FLAG_SECURE,
+                      WindowManager.LayoutParams.FLAG_SECURE
+                  );
+              }
+          }
+          EOF
+            echo "MainActivity.java berhasil dipatch dengan FLAG_SECURE."
+          else
+            echo "PERINGATAN: MainActivity.java tidak ditemukan di path yang diharapkan, langkah ini dilewati."
+          fi
+
       - name: Pasang ikon dan splash
         run: |
           if [ -f assets/icon-only.png ]; then
